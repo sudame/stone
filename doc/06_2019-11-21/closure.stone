@@ -1,0 +1,7 @@
+adder = fun(x) {
+  fun(y) {x + y}
+}
+
+compose = fun(f, g) {
+  fun(x) { f(g(x)) }
+}
