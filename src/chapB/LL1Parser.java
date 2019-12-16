@@ -5,8 +5,9 @@ import stone.Lexer;
 import stone.ParseException;
 import stone.Token;
 
-import java.lang.reflect.Array;
 import java.util.*;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 
 public class LL1Parser {
@@ -87,8 +88,9 @@ public class LL1Parser {
 
     final private LinkedHashSet<Symbol> terminalSymbols = new LinkedHashSet<>();
 
-    final private LinkedHashMap<Symbol, LinkedHashSet<Symbol>> first = new LinkedHashMap<>();
-    final private LinkedHashMap<Symbol, LinkedHashSet<Symbol>> follow = new LinkedHashMap<>();
+    final static private LinkedHashMap<Symbol, LinkedHashSet<Symbol>> first = new LinkedHashMap<>();
+    final static private LinkedHashMap<Symbol, LinkedHashSet<Symbol>> follow = new LinkedHashMap<>();
+    final static private LinkedHashMap<Integer, LinkedHashSet<Symbol>> directors = new LinkedHashMap<>();
 
     final static private TopDownRule[] topDownRules = {
 //            new TopDownRule(1, PrimarySymbol, new Symbol[]{LParenSymbol, ExprSymbol, RParenSymbol}),
@@ -123,7 +125,7 @@ public class LL1Parser {
             new TopDownRule(6, Term2Symbol, new Symbol[]{MultipleSymbol, TermSymbol}),
             new TopDownRule(7, FactorSymbol, new Symbol[]{NumberSymbol}),
             new TopDownRule(8, FactorSymbol, new Symbol[]{LParenSymbol, ExprSymbol, RParenSymbol}),
-            new TopDownRule(8, ProgramSymbol, new Symbol[]{ExprSymbol, EOFSymbol}),
+            new TopDownRule(8, ProgramSymbol, new Symbol[]{ExprSymbol, EOLSymbol}),
     };
 
     private void initSymbols() {
@@ -194,7 +196,7 @@ public class LL1Parser {
             follow.put(symbol, new LinkedHashSet<>());
         }
         // Follow(「開始記号」) = {EOF}
-        follow.put(ProgramSymbol, new LinkedHashSet<>(Collections.singletonList(EOFSymbol)));
+        follow.put(ProgramSymbol, new LinkedHashSet<>(Collections.singletonList(EOLSymbol)));
 
         // 以下を，変化しなくなるまで繰り返す.
         while (true) {
@@ -207,9 +209,9 @@ public class LL1Parser {
                 for (int i = 0; i < toSymbols.length; i++) {
                     Symbol toSymbol = toSymbols[i];
                     Symbol[] restSymbols = Arrays.copyOfRange(toSymbols, i + 1, toSymbols.length);
-                    if(terminalSymbols.contains(toSymbol)) continue;
+                    if (terminalSymbols.contains(toSymbol)) continue;
                     LinkedHashSet<Symbol> fst = new LinkedHashSet<>(firstAlpha(restSymbols));
-                    if(fst.remove(EmptySymbol)) {
+                    if (fst.remove(EmptySymbol)) {
                         // First(「記号列」) が空を含むならば
                         // Follow(B) ∪ = (First(「記号列」) - {空}) ∪ Follow(A)
                         fst.addAll(new LinkedHashSet<>(follow.get(fromSymbol)));
@@ -229,60 +231,86 @@ public class LL1Parser {
         System.out.print("");
     }
 
-    final static private Symbol[][] rules = {
-            null,
-            {LParenSymbol, ExprSymbol, RParenSymbol}, // 1
-            {NumberSymbol}, // 2
-            {PlusSymbol}, // 3
-            {MinusSymbol}, // 4
-            {EmptySymbol}, // 5
-            {OpSymbol, ExprSymbol}, // 6
-            {PrimarySymbol, Expr2Symbol}, // 7
-            {EmptySymbol}, // 8
-            {StatementSymbol}, // 9
-            {SemicolonSymbol}, // 10
-            {EOLSymbol}, // 11
-            {EmptySymbol}, // 12
-            {DelimSymbol, StatementOptSymbol, StatementList2Symbol}, // 13
-            {StatementOptSymbol, StatementList2Symbol}, // 14
-            {LBracketSymbol, StatementListSymbol, RBracketSymbol}, // 15
-            {ExprSymbol}, // 16
-            {EmptySymbol}, // 17
-            {ElseSymbol, BlockSymbol}, // 18
-            {IfSymbol, ExprSymbol, BlockSymbol, ElsePartSymbol}, // 19
-            {WhileSymbol, ExprSymbol, BlockSymbol}, // 20
-            {SimpleSymbol}, // 21
-            {StatementOptSymbol, EOFSymbol}, // 22
+    private void genDirectorSets() {
+        for (TopDownRule rule : topDownRules) {
+            int ruleId = rule.id;
+            Symbol fromSymbol = rule.from;
+            Symbol[] toSymbol = rule.to;
+
+            LinkedHashSet<Symbol> fst = new LinkedHashSet<>(firstAlpha(toSymbol));
+            if (fst.remove(EmptySymbol)) {
+                fst.addAll(new LinkedHashSet<>(follow.get(fromSymbol)));
+                directors.put(ruleId, fst);
+            } else {
+                directors.put(ruleId, fst);
+            }
+        }
+
+    }
+
+
+    final static private Symbol[][] rules()  {
+
     };
 
-    //    final static private int[][] table = {
-//            {0, 0, 1, 1, 0, 0},
-//            {3, 0, 0, 0, 2, 2},
-//            {0, 0, 4, 4, 0, 0},
-//            {5, 6, 0, 0, 5, 5},
-//            {0, 0, 7, 8, 0, 0}
-//    };
-//
-//    private static int terminalNumber(Token t) throws ParseException {
-//        if (t.isNumber()) {
-//            return 2;
-//        }
-//        switch (t.getText()) {
-//            case "+":
-//                return 0;
-//            case "*":
-//                return 1;
-//            case "(":
-//                return 3;
-//            case ")":
-//                return 4;
-//            case "\\n":
-//                return 5;
-//            default:
-//                throw new ParseException("Unknown token: " + t.getText());
-//        }
-//    }
-//
+    private int[][] table() {
+        final LinkedHashSet<Symbol> _terminals = new LinkedHashSet<>(terminalSymbols);
+        _terminals.remove(EmptySymbol);
+        final LinkedList<Symbol> terminals = new LinkedList<>(_terminals);
+        final LinkedList<Symbol> nonTerminals = new LinkedList<>(nonTerminalSymbols);
+
+        final int[][] table = new int[nonTerminals.size()][terminals.size()];
+
+        // 初期化
+        for (int i = 0; i < table.length; i++) {
+            for (int j = 0; j < table.length; j++) {
+                table[i][j] = 0;
+            }
+        }
+
+        for (TopDownRule rule : topDownRules) {
+            int ruleId = rule.id;
+            LinkedHashSet<Symbol> director = directors.get(ruleId);
+            LinkedList<Symbol> alpha = new LinkedList<>(director);
+
+            for (Symbol t : alpha) {
+                int row = nonTerminals.indexOf(rule.from);
+                int column = terminals.indexOf(t);
+
+                table[row][column] = ruleId;
+            }
+        }
+
+        return table;
+    }
+
+    //
+    private int terminalNumber(Token t) throws ParseException {
+        final LinkedHashSet<Symbol> _terminals = new LinkedHashSet<>(terminalSymbols);
+        _terminals.remove(EmptySymbol);
+        final LinkedList<Symbol> terminals = new LinkedList<>(_terminals);
+
+        int index =  IntStream.range(0, terminals.size()).map(i->terminals.get(i).toString().equals(t.getText()) ? i : -1).max().orElse(-1);
+        if(index < 0) {
+            throw new ParseException("Unknown token: " + t.getText());
+        }
+
+        return index;
+    }
+
+    private int nonTerminalNumber(Symbol s) throws ParseException {
+        final LinkedHashSet<Symbol> _nonTerminals = new LinkedHashSet<>(nonTerminalSymbols);
+        _nonTerminals.remove(EmptySymbol);
+        final LinkedList<Symbol> nonTerminals = new LinkedList<>(_nonTerminals);
+
+        int index =  IntStream.range(0, nonTerminals.size()).map(i->nonTerminals.get(i).toString().equals(s.toString()) ? i : -1).max().orElse(-1);
+        if(index < 0) {
+            throw new ParseException("Unknown token: " + s.toString());
+        }
+
+        return index;
+    }
+
     private LL1Parser(Lexer p) {
         lexer = p;
         stack = new LinkedList<>();
@@ -290,50 +318,50 @@ public class LL1Parser {
         stack.push(new Symbol(NonTerminal.Program));
     }
 //
-//    private void token(String name) throws ParseException {
-//        Token t = lexer.read();
-//        if (!(t.isIdentifier() && name.equals(t.getText())))
-//            throw new ParseException(t);
-//    }
+    private void token(String name) throws ParseException {
+        Token t = lexer.read();
+        if (!(t.isIdentifier() && name.equals(t.getText())))
+            throw new ParseException(t);
+    }
 //
-//    private void printStack() {
-//        System.out.print("[ ");
-//        for (Symbol s : stack) {
-//            System.out.print(s + " ");
-//        }
-//        System.out.print("]");
-//    }
+    private void printStack() {
+        System.out.print("[ ");
+        for (Symbol s : stack) {
+            System.out.print(s + " ");
+        }
+        System.out.print("]");
+    }
 //
-//    public void parse() throws ParseException {
-//        while (!stack.isEmpty()) {
-//            Token t = lexer.peek(0);
-//            System.out.print(t.getText() + ": ");
-//            printStack();
-//            Symbol top = stack.peek();
-//            assert top != null; // top is Nullable.
-//            if (top.isTerminal) {
-//                if (top == NumberSymbol) {
-//                    if (t.isNumber()) {
-//                        lexer.read();
-//                        stack.pop();
-//                    } else {
-//                        throw new ParseException("Number expected: " + t.getText());
-//                    }
-//                } else {
-//                    token(top.tokenString);
-//                    stack.pop();
-//                }
-//                System.out.println(" match");
-//            } else {
-//                int ruleNumber = table[top.nt.ordinal()][terminalNumber(t)]; // get rule number from rule-table
-//                if (ruleNumber == 0) throw new ParseException("Unexpected token: " + t.getText()); // error handling
-//                Symbol[] symbols = rules[ruleNumber]; // get symbols
-//                stack.pop();
-//                for (int i = symbols.length - 1; i >= 0; i--) stack.push(symbols[i]); // replace token
-//                System.out.println(" rule: " + ruleNumber); // print rule number
-//            }
-//        }
-//    }
+    public void parse() throws ParseException {
+        while (!stack.isEmpty()) {
+            Token t = lexer.peek(0);
+            System.out.print(t.getText() + ": ");
+            printStack();
+            Symbol top = stack.peek();
+            assert top != null; // top is Nullable.
+            if (top.isTerminal) {
+                if (top == NumberSymbol) {
+                    if (t.isNumber()) {
+                        lexer.read();
+                        stack.pop();
+                    } else {
+                        throw new ParseException("Number expected: " + t.getText());
+                    }
+                } else {
+                    token(top.tokenString);
+                    stack.pop();
+                }
+                System.out.println(" match");
+            } else {
+                int ruleNumber = table()[nonTerminalNumber(top)][terminalNumber(t)]; // get rule number from rule-table
+                if (ruleNumber == 0) throw new ParseException("Unexpected token: " + t.getText()); // error handling
+                Symbol[] symbols = rules[ruleNumber]; // get symbols
+                stack.pop();
+                for (int i = symbols.length - 1; i >= 0; i--) stack.push(symbols[i]); // replace token
+                System.out.println(" rule: " + ruleNumber); // print rule number
+            }
+        }
+    }
 
     public static void main(String[] args) throws ParseException {
         Lexer lexer = new Lexer(new CodeDialog());
@@ -341,8 +369,11 @@ public class LL1Parser {
 
         p.initSymbols();
         p.genFirstSets();
-        p.genFollowSets()
-        ;
-//        p.parse();
+        p.genFollowSets();
+        p.genDirectorSets();
+        int[][] t = p.table();
+        System.out.print(Arrays.deepToString(t));
+
+        p.parse();
     }
 }
