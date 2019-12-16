@@ -3,13 +3,29 @@ package chapB;
 import stone.CodeDialog;
 import stone.Lexer;
 import stone.ParseException;
+import stone.Token;
+import sun.jvm.hotspot.debugger.cdbg.BlockSym;
 
-import java.util.*;
+import java.util.Deque;
+import java.util.LinkedList;
+
 
 public class LL1Parser {
     private enum NonTerminal {
         Primary, Op, Expr2, Expr, StatementOpt, Delim, StatementList2,
         StatementList, Block, Simple, ElsePart, Statement, Program,
+    }
+
+    static class TopDownRule {
+        int id;
+        Symbol from;
+        Symbol[] to;
+
+        TopDownRule(int id, Symbol from, Symbol[] to) {
+            this.id = id;
+            this.from = from;
+            this.to = to;
+        }
     }
 
     static class Symbol {
@@ -64,36 +80,33 @@ public class LL1Parser {
             NumberSymbol = new Symbol("NUMBER"),
             EOFSymbol = new Symbol("EOF");
 
-    final static private Symbol[] nonTerminalSymbols = {
-            PrimarySymbol,
-            OpSymbol,
-            Expr2Symbol,
-            ExprSymbol,
-            StatementOptSymbol,
-            DelimSymbol,
-            StatementList2Symbol,
-            StatementListSymbol,
-            BlockSymbol,
-            SimpleSymbol,
-            ElsePartSymbol,
-            StatementSymbol,
-    };
+    final static private Symbol[] nonTerminalSymbols = {};
 
-    final static private Symbol[] terminalSymbols = {
-            EmptySymbol,
-            LParenSymbol,
-            RParenSymbol,
-            LBracketSymbol,
-            RBracketSymbol,
-            PlusSymbol,
-            MinusSymbol,
-            SemicolonSymbol,
-            EOLSymbol,
-            ElseSymbol,
-            IfSymbol,
-            WhileSymbol,
-            NumberSymbol,
-            EOFSymbol,
+    final static private Symbol[] terminalSymbols = {};
+
+    final static private TopDownRule[] topDownRule = {
+            new TopDownRule(1, PrimarySymbol, new Symbol[]{LParenSymbol, ExprSymbol, RParenSymbol}),
+            new TopDownRule(2, PrimarySymbol, new Symbol[]{NumberSymbol}),
+            new TopDownRule(3, OpSymbol, new Symbol[]{PlusSymbol}),
+            new TopDownRule(4,OpSymbol , new Symbol[]{MinusSymbol}),
+            new TopDownRule(5, Expr2Symbol, new Symbol[]{EmptySymbol}),
+            new TopDownRule(6, Expr2Symbol, new Symbol[]{OpSymbol, ExprSymbol}),
+            new TopDownRule(7, ExprSymbol, new Symbol[]{PrimarySymbol, Expr2Symbol}),
+            new TopDownRule(8, StatementOptSymbol, new Symbol[]{EmptySymbol}),
+            new TopDownRule(9, StatementOptSymbol, new Symbol[]{StatementSymbol}),
+            new TopDownRule(10, DelimSymbol, new Symbol[]{SemicolonSymbol}),
+            new TopDownRule(11, DelimSymbol, new Symbol[]{EOLSymbol}),
+            new TopDownRule(12, StatementList2Symbol, new Symbol[]{EmptySymbol}),
+            new TopDownRule(13, StatementList2Symbol, new Symbol[]{DelimSymbol, StatementOptSymbol, StatementList2Symbol}),
+            new TopDownRule(14, StatementListSymbol, new Symbol[]{StatementOptSymbol, StatementList2Symbol}),
+            new TopDownRule(15,BlockSymbol , new Symbol[]{LBracketSymbol, StatementListSymbol, RBracketSymbol}),
+            new TopDownRule(16, SimpleSymbol, new Symbol[]{ExprSymbol}),
+            new TopDownRule(17, ElsePartSymbol, new Symbol[]{EmptySymbol}),
+            new TopDownRule(18, ElsePartSymbol, new Symbol[]{ElseSymbol, BlockSymbol}),
+            new TopDownRule(19,StatementSymbol , new Symbol[]{IfSymbol, ExprSymbol, BlockSymbol, ElsePartSymbol}),
+            new TopDownRule(20, StatementSymbol, new Symbol[]{WhileSymbol, ExprSymbol, BlockSymbol}),
+            new TopDownRule(21, StatementSymbol, new Symbol[]{SimpleSymbol}),
+            new TopDownRule(22,ProgramSymbol , new Symbol[]{StatementOptSymbol, EOFSymbol}),
     };
 
     final static private Symbol[][] rules = {
@@ -122,24 +135,7 @@ public class LL1Parser {
             {StatementOptSymbol, EOFSymbol}, // 22
     };
 
-    private HashSet<Symbol> genFirstSet(Symbol symbol) {
-        return firstSet;
-    }
-
-    private Set<Symbol> genFirstSet(Symbol[] symbols) {
-        if (Arrays.asList(terminalSymbols).contains(symbols[0])) {
-            return new HashSet<>(Collections.singletonList(symbols[0]));
-        } else {
-            HashSet<Symbol> firstSet = genFirstSet(symbols[0]);
-            if(firstSet.contains(EmptySymbol)) {
-                firstSet.remove(EmptySymbol);
-                firstSet.addAll(genFirstSet(Arrays.copyOfRange(symbols, 1, symbols.length)));
-                return firstSet;
-            }
-            return firstSet;
-        }
-    }
-//    final static private int[][] table = {
+    //    final static private int[][] table = {
 //            {0, 0, 1, 1, 0, 0},
 //            {3, 0, 0, 0, 2, 2},
 //            {0, 0, 4, 4, 0, 0},
@@ -167,12 +163,12 @@ public class LL1Parser {
 //        }
 //    }
 //
-//    private LL1Parser(Lexer p) {
-//        lexer = p;
-//        stack = new LinkedList<>();
-//        stack.push(new Symbol(Token.EOL));
-//        stack.push(new Symbol(NonTerminal.Expression));
-//    }
+    private LL1Parser(Lexer p) {
+        lexer = p;
+        stack = new LinkedList<>();
+        stack.push(new Symbol(Token.EOL));
+        stack.push(new Symbol(NonTerminal.Program));
+    }
 //
 //    private void token(String name) throws ParseException {
 //        Token t = lexer.read();
