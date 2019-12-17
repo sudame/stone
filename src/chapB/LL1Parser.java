@@ -1,12 +1,12 @@
 package chapB;
 
+import com.sun.tools.corba.se.idl.constExpr.LessThan;
 import stone.CodeDialog;
 import stone.Lexer;
 import stone.ParseException;
 import stone.Token;
 
 import java.util.*;
-import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 
@@ -75,13 +75,17 @@ public class LL1Parser {
             RBracketSymbol = new Symbol("}"),
             PlusSymbol = new Symbol("+"),
             MinusSymbol = new Symbol("-"),
+            LessThanSymbol = new Symbol("<"),
+            EqualSymbol = new Symbol("="),
             MultipleSymbol = new Symbol("*"),
             SemicolonSymbol = new Symbol(";"),
-            EOLSymbol = new Symbol("EOL"),
+            EOLSymbol = new Symbol("\\n"),
             ElseSymbol = new Symbol("else"),
             IfSymbol = new Symbol("if"),
             WhileSymbol = new Symbol("while"),
             NumberSymbol = new Symbol("NUMBER"),
+            IdentifierSymbol= new Symbol("str"),
+            StringSymbol = new Symbol("STRING"),
             EOFSymbol = new Symbol("EOF");
 
     final private LinkedHashSet<Symbol> nonTerminalSymbols = new LinkedHashSet<>();
@@ -93,39 +97,39 @@ public class LL1Parser {
     final static private LinkedHashMap<Integer, LinkedHashSet<Symbol>> directors = new LinkedHashMap<>();
 
     final static private TopDownRule[] topDownRules = {
-//            new TopDownRule(1, PrimarySymbol, new Symbol[]{LParenSymbol, ExprSymbol, RParenSymbol}),
-//            new TopDownRule(2, PrimarySymbol, new Symbol[]{NumberSymbol}),
-//            new TopDownRule(3, OpSymbol, new Symbol[]{PlusSymbol}),
-//            new TopDownRule(4, OpSymbol, new Symbol[]{MinusSymbol}),
-//            new TopDownRule(5, Expr2Symbol, new Symbol[]{EmptySymbol}),
-//            new TopDownRule(6, Expr2Symbol, new Symbol[]{OpSymbol, ExprSymbol}),
-//            new TopDownRule(7, ExprSymbol, new Symbol[]{PrimarySymbol, Expr2Symbol}),
-//            new TopDownRule(8, StatementOptSymbol, new Symbol[]{EmptySymbol}),
-//            new TopDownRule(9, StatementOptSymbol, new Symbol[]{StatementSymbol}),
-//            new TopDownRule(10, DelimSymbol, new Symbol[]{SemicolonSymbol}),
-//            new TopDownRule(11, DelimSymbol, new Symbol[]{EOLSymbol}),
-//            new TopDownRule(12, StatementList2Symbol, new Symbol[]{EmptySymbol}),
-//            new TopDownRule(13, StatementList2Symbol, new Symbol[]{DelimSymbol, StatementOptSymbol, StatementList2Symbol}),
-//            new TopDownRule(14, StatementListSymbol, new Symbol[]{StatementOptSymbol, StatementList2Symbol}),
-//            new TopDownRule(15, BlockSymbol, new Symbol[]{LBracketSymbol, StatementListSymbol, RBracketSymbol}),
-//            new TopDownRule(16, SimpleSymbol, new Symbol[]{ExprSymbol}),
-//            new TopDownRule(17, ElsePartSymbol, new Symbol[]{EmptySymbol}),
-//            new TopDownRule(18, ElsePartSymbol, new Symbol[]{ElseSymbol, BlockSymbol}),
-//            new TopDownRule(19, StatementSymbol, new Symbol[]{IfSymbol, ExprSymbol, BlockSymbol, ElsePartSymbol}),
-//            new TopDownRule(20, StatementSymbol, new Symbol[]{WhileSymbol, ExprSymbol, BlockSymbol}),
-//            new TopDownRule(21, StatementSymbol, new Symbol[]{SimpleSymbol}),
-//            new TopDownRule(22, ProgramSymbol, new Symbol[]{StatementOptSymbol, EOFSymbol}),
+            new TopDownRule(1, PrimarySymbol, new Symbol[]{LParenSymbol, ExprSymbol, RParenSymbol}),
+            new TopDownRule(2, PrimarySymbol, new Symbol[]{NumberSymbol}),
+            new TopDownRule(3, OpSymbol, new Symbol[]{PlusSymbol}),
+            new TopDownRule(4, OpSymbol, new Symbol[]{MinusSymbol}),
+            new TopDownRule(5, Expr2Symbol, new Symbol[]{}),
+            new TopDownRule(6, Expr2Symbol, new Symbol[]{OpSymbol, ExprSymbol}),
+            new TopDownRule(7, ExprSymbol, new Symbol[]{PrimarySymbol, Expr2Symbol}),
+            new TopDownRule(8, StatementOptSymbol, new Symbol[]{}),
+            new TopDownRule(9, StatementOptSymbol, new Symbol[]{StatementSymbol}),
+            new TopDownRule(10, DelimSymbol, new Symbol[]{SemicolonSymbol}),
+            new TopDownRule(11, DelimSymbol, new Symbol[]{EOLSymbol}),
+            new TopDownRule(12, StatementList2Symbol, new Symbol[]{}),
+            new TopDownRule(13, StatementList2Symbol, new Symbol[]{DelimSymbol, StatementOptSymbol, StatementList2Symbol}),
+            new TopDownRule(14, StatementListSymbol, new Symbol[]{StatementOptSymbol, StatementList2Symbol}),
+            new TopDownRule(15, BlockSymbol, new Symbol[]{LBracketSymbol, StatementListSymbol, RBracketSymbol}),
+            new TopDownRule(16, SimpleSymbol, new Symbol[]{ExprSymbol}),
+            new TopDownRule(17, ElsePartSymbol, new Symbol[]{}),
+            new TopDownRule(18, ElsePartSymbol, new Symbol[]{ElseSymbol, BlockSymbol}),
+            new TopDownRule(19, StatementSymbol, new Symbol[]{IfSymbol, ExprSymbol, BlockSymbol, ElsePartSymbol}),
+            new TopDownRule(20, StatementSymbol, new Symbol[]{WhileSymbol, ExprSymbol, BlockSymbol}),
+            new TopDownRule(21, StatementSymbol, new Symbol[]{SimpleSymbol}),
+            new TopDownRule(22, ProgramSymbol, new Symbol[]{StatementOptSymbol, EOLSymbol}),
 
             // for test
-            new TopDownRule(1, ExprSymbol, new Symbol[]{TermSymbol, Expr2Symbol}),
-            new TopDownRule(2, Expr2Symbol, new Symbol[]{EmptySymbol}),
-            new TopDownRule(3, Expr2Symbol, new Symbol[]{PlusSymbol, ExprSymbol}),
-            new TopDownRule(4, TermSymbol, new Symbol[]{FactorSymbol, Term2Symbol}),
-            new TopDownRule(5, Term2Symbol, new Symbol[]{EmptySymbol}),
-            new TopDownRule(6, Term2Symbol, new Symbol[]{MultipleSymbol, TermSymbol}),
-            new TopDownRule(7, FactorSymbol, new Symbol[]{NumberSymbol}),
-            new TopDownRule(8, FactorSymbol, new Symbol[]{LParenSymbol, ExprSymbol, RParenSymbol}),
-            new TopDownRule(8, ProgramSymbol, new Symbol[]{ExprSymbol, EOLSymbol}),
+//            new TopDownRule(1, ExprSymbol, new Symbol[]{TermSymbol, Expr2Symbol}),
+//            new TopDownRule(2, Expr2Symbol, new Symbol[]{}),
+//            new TopDownRule(3, Expr2Symbol, new Symbol[]{PlusSymbol, ExprSymbol}),
+//            new TopDownRule(4, TermSymbol, new Symbol[]{FactorSymbol, Term2Symbol}),
+//            new TopDownRule(5, Term2Symbol, new Symbol[]{}),
+//            new TopDownRule(6, Term2Symbol, new Symbol[]{MultipleSymbol, TermSymbol}),
+//            new TopDownRule(7, FactorSymbol, new Symbol[]{NumberSymbol}),
+//            new TopDownRule(8, FactorSymbol, new Symbol[]{LParenSymbol, ExprSymbol, RParenSymbol}),
+//            new TopDownRule(9, ProgramSymbol, new Symbol[]{ExprSymbol, EOLSymbol}),
     };
 
     private void initSymbols() {
@@ -245,13 +249,28 @@ public class LL1Parser {
                 directors.put(ruleId, fst);
             }
         }
-
     }
 
 
-    final static private Symbol[][] rules()  {
+    private Symbol[][] rules() {
+        LinkedList<LinkedList<Symbol>> ruleList = new LinkedList<>();
+        // add Empty to first
+        ruleList.add(new LinkedList<>(Collections.singletonList(EmptySymbol)));
 
-    };
+        for (TopDownRule rule : topDownRules
+        ) {
+            ruleList.add(new LinkedList<>(Arrays.asList(rule.to)));
+        }
+
+        // List -> Array
+        Symbol[][] rules = new Symbol[ruleList.size()][];
+        for (int i = 0; i < rules.length; i++) {
+            rules[i] = ruleList.get(i).toArray(new Symbol[0]);
+        }
+        return rules;
+    }
+
+    ;
 
     private int[][] table() {
         final LinkedHashSet<Symbol> _terminals = new LinkedHashSet<>(terminalSymbols);
@@ -262,11 +281,11 @@ public class LL1Parser {
         final int[][] table = new int[nonTerminals.size()][terminals.size()];
 
         // 初期化
-        for (int i = 0; i < table.length; i++) {
-            for (int j = 0; j < table.length; j++) {
-                table[i][j] = 0;
-            }
-        }
+//        for (int i = 0; i < table.length; i++) {
+//            for (int j = 0; j < table[i].length; j++) {
+//                table[i][j] = 0;
+//            }
+//        }
 
         for (TopDownRule rule : topDownRules) {
             int ruleId = rule.id;
@@ -290,8 +309,13 @@ public class LL1Parser {
         _terminals.remove(EmptySymbol);
         final LinkedList<Symbol> terminals = new LinkedList<>(_terminals);
 
-        int index =  IntStream.range(0, terminals.size()).map(i->terminals.get(i).toString().equals(t.getText()) ? i : -1).max().orElse(-1);
-        if(index < 0) {
+        String text = t.getText();
+
+        if (t.isNumber()) text = "NUMBER";
+
+        final String finalText = text;
+        int index = IntStream.range(0, terminals.size()).map(i -> terminals.get(i).toString().equals(finalText) ? i : -1).max().orElse(-1);
+        if (index < 0) {
             throw new ParseException("Unknown token: " + t.getText());
         }
 
@@ -303,8 +327,8 @@ public class LL1Parser {
         _nonTerminals.remove(EmptySymbol);
         final LinkedList<Symbol> nonTerminals = new LinkedList<>(_nonTerminals);
 
-        int index =  IntStream.range(0, nonTerminals.size()).map(i->nonTerminals.get(i).toString().equals(s.toString()) ? i : -1).max().orElse(-1);
-        if(index < 0) {
+        int index = IntStream.range(0, nonTerminals.size()).map(i -> nonTerminals.get(i).toString().equals(s.toString()) ? i : -1).max().orElse(-1);
+        if (index < 0) {
             throw new ParseException("Unknown token: " + s.toString());
         }
 
@@ -317,13 +341,15 @@ public class LL1Parser {
         stack.push(new Symbol(Token.EOL));
         stack.push(new Symbol(NonTerminal.Program));
     }
-//
+
+    //
     private void token(String name) throws ParseException {
         Token t = lexer.read();
         if (!(t.isIdentifier() && name.equals(t.getText())))
             throw new ParseException(t);
     }
-//
+
+    //
     private void printStack() {
         System.out.print("[ ");
         for (Symbol s : stack) {
@@ -331,7 +357,8 @@ public class LL1Parser {
         }
         System.out.print("]");
     }
-//
+
+    //
     public void parse() throws ParseException {
         while (!stack.isEmpty()) {
             Token t = lexer.peek(0);
@@ -355,7 +382,7 @@ public class LL1Parser {
             } else {
                 int ruleNumber = table()[nonTerminalNumber(top)][terminalNumber(t)]; // get rule number from rule-table
                 if (ruleNumber == 0) throw new ParseException("Unexpected token: " + t.getText()); // error handling
-                Symbol[] symbols = rules[ruleNumber]; // get symbols
+                Symbol[] symbols = rules()[ruleNumber]; // get symbols
                 stack.pop();
                 for (int i = symbols.length - 1; i >= 0; i--) stack.push(symbols[i]); // replace token
                 System.out.println(" rule: " + ruleNumber); // print rule number
@@ -372,7 +399,7 @@ public class LL1Parser {
         p.genFollowSets();
         p.genDirectorSets();
         int[][] t = p.table();
-        System.out.print(Arrays.deepToString(t));
+        System.out.println(Arrays.deepToString(t));
 
         p.parse();
     }
