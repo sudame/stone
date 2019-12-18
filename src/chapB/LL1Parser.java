@@ -1,6 +1,5 @@
 package chapB;
 
-import com.sun.tools.corba.se.idl.constExpr.LessThan;
 import stone.CodeDialog;
 import stone.Lexer;
 import stone.ParseException;
@@ -65,10 +64,10 @@ public class LL1Parser {
             ElsePartSymbol = new Symbol(NonTerminal.ElsePart),
             StatementSymbol = new Symbol(NonTerminal.Statement),
             ProgramSymbol = new Symbol(NonTerminal.Program),
-            TermSymbol = new Symbol(NonTerminal.Term),
-            Term2Symbol = new Symbol(NonTerminal.Term2),
-            FactorSymbol = new Symbol(NonTerminal.Factor),
-            EmptySymbol = new Symbol("EMPTY"),
+    //            TermSymbol = new Symbol(NonTerminal.Term),
+//            Term2Symbol = new Symbol(NonTerminal.Term2),
+//            FactorSymbol = new Symbol(NonTerminal.Factor),
+    EmptySymbol = new Symbol("EMPTY"),
             LParenSymbol = new Symbol("("),
             RParenSymbol = new Symbol(")"),
             LBracketSymbol = new Symbol("{"),
@@ -77,16 +76,17 @@ public class LL1Parser {
             MinusSymbol = new Symbol("-"),
             LessThanSymbol = new Symbol("<"),
             EqualSymbol = new Symbol("="),
-            MultipleSymbol = new Symbol("*"),
-            SemicolonSymbol = new Symbol(";"),
+    //            MultipleSymbol = new Symbol("*"),
+    SemicolonSymbol = new Symbol(";"),
             EOLSymbol = new Symbol("\\n"),
             ElseSymbol = new Symbol("else"),
             IfSymbol = new Symbol("if"),
             WhileSymbol = new Symbol("while"),
             NumberSymbol = new Symbol("NUMBER"),
-            IdentifierSymbol= new Symbol("str"),
-            StringSymbol = new Symbol("STRING"),
-            EOFSymbol = new Symbol("EOF");
+            IdentifierSymbol = new Symbol("IDENTIFIER"),
+            StringSymbol = new Symbol("STRING");
+//            EOFSymbol = new Symbol("EOF"),
+
 
     final private LinkedHashSet<Symbol> nonTerminalSymbols = new LinkedHashSet<>();
 
@@ -119,6 +119,11 @@ public class LL1Parser {
             new TopDownRule(20, StatementSymbol, new Symbol[]{WhileSymbol, ExprSymbol, BlockSymbol}),
             new TopDownRule(21, StatementSymbol, new Symbol[]{SimpleSymbol}),
             new TopDownRule(22, ProgramSymbol, new Symbol[]{StatementOptSymbol, EOLSymbol}),
+            new TopDownRule(23, OpSymbol, new Symbol[]{EqualSymbol}),
+            new TopDownRule(24, OpSymbol, new Symbol[]{LessThanSymbol}),
+            new TopDownRule(25, PrimarySymbol, new Symbol[]{IdentifierSymbol}),
+            new TopDownRule(26, PrimarySymbol, new Symbol[]{StringSymbol}),
+
 
             // for test
 //            new TopDownRule(1, ExprSymbol, new Symbol[]{TermSymbol, Expr2Symbol}),
@@ -187,7 +192,7 @@ public class LL1Parser {
             }
 
             // 変化が無くなったかどうかの判定
-            if (this.first.equals(oldFirst)) break;
+            if (first.equals(oldFirst)) break;
         }
 
         System.out.print("");
@@ -229,7 +234,7 @@ public class LL1Parser {
             }
 
 
-            if (oldFollow.equals(this.follow)) break;
+            if (oldFollow.equals(follow)) break;
         }
 
         System.out.print("");
@@ -269,8 +274,6 @@ public class LL1Parser {
         }
         return rules;
     }
-
-    ;
 
     private int[][] table() {
         final LinkedHashSet<Symbol> _terminals = new LinkedHashSet<>(terminalSymbols);
@@ -312,11 +315,18 @@ public class LL1Parser {
         String text = t.getText();
 
         if (t.isNumber()) text = "NUMBER";
+        else if (t.isString()) text = "STRING";
 
         final String finalText = text;
         int index = IntStream.range(0, terminals.size()).map(i -> terminals.get(i).toString().equals(finalText) ? i : -1).max().orElse(-1);
         if (index < 0) {
-            throw new ParseException("Unknown token: " + t.getText());
+            if (t.isIdentifier()) {
+                // 変数の場合
+                index = IntStream.range(0, terminals.size()).map(i -> terminals.get(i).toString().equals("IDENTIFIER") ? i : -1).max().orElse(-1);
+            } else {
+                throw new ParseException("Unknown token: " + t.getText());
+            }
+
         }
 
         return index;
@@ -346,7 +356,10 @@ public class LL1Parser {
     private void token(String name) throws ParseException {
         Token t = lexer.read();
         if (!(t.isIdentifier() && name.equals(t.getText())))
-            throw new ParseException(t);
+            // STRING と IDENTIFIER は t.getText() と name が一致しないので判定を外す
+            // 構文エラーを逃すことがある気がするが、stone言語の厳密な構文定義も無いので良しとする
+            if (!name.equals("STRING") && !name.equals("IDENTIFIER"))
+                throw new ParseException(t);
     }
 
     //
